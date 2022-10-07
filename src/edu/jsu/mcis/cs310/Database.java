@@ -24,7 +24,24 @@ public class Database {
         
         String result = null;
         
-        // INSERT YOUR CODE HERE
+        //try and catch method
+        try {
+            /* Preparing Query */
+            String query = "SELECT * FROM section WHERE termid = ? AND subjectid = ? AND num = ?";
+            PreparedStatement ps = connection.prepareStatement(query);
+            ps.setInt(1, termid);
+            ps.setString(2, subjectid);
+            ps.setString(3, num);
+
+            ResultSet rs = ps.executeQuery();
+
+            
+            result = getResultSetAsJSON(rs); // Cconverts the result to a string
+
+            rs.close();
+        }
+        catch (Exception e) { e.printStackTrace(); }
+
         
         return result;
         
@@ -34,7 +51,16 @@ public class Database {
         
         int result = 0;
         
-        // INSERT YOUR CODE HERE
+        try {
+            String query = "INSERT INTO registration (studentid, termid, crn) VALUES (?, ?, ?)";
+            PreparedStatement ps = connection.prepareStatement(query);
+            ps.setInt(1, studentid);
+            ps.setInt(2, termid);
+            ps.setInt(3, crn);
+
+            result = ps.executeUpdate(); 
+        }
+        catch (Exception e) { e.printStackTrace(); }
         
         return result;
         
@@ -44,7 +70,17 @@ public class Database {
         
         int result = 0;
         
-        // INSERT YOUR CODE HERE
+        try {
+            String query = "DELETE FROM registration WHERE studentid = ? AND termid = ? AND crn = ?";
+            PreparedStatement ps = connection.prepareStatement(query);
+            ps.setInt(1, studentid);
+            ps.setInt(2, termid);
+            ps.setInt(3, crn);
+
+            result = ps.executeUpdate();
+        } 
+        catch (Exception e) { e.printStackTrace(); }
+
         
         return result;
         
@@ -54,7 +90,15 @@ public class Database {
         
         int result = 0;
         
-        // INSERT YOUR CODE HERE
+        try {
+            String query = "DELETE FROM registration WHERE studentid = ? AND termid = ?";
+            PreparedStatement ps = connection.prepareStatement(query);
+            ps.setInt(1, studentid);
+            ps.setInt(2, termid);
+
+            result = ps.executeUpdate();
+        } 
+        catch (Exception e) { e.printStackTrace(); }
         
         return result;
         
@@ -64,7 +108,68 @@ public class Database {
         
         String result = null;
         
-        // INSERT YOUR CODE HERE
+        JSONArray json = new JSONArray();
+
+        int rowCount = 0; // Keep track of number of rows returned
+        int[] crns; // Array to hold CRNs
+
+        try {
+            /* Preparing Query */
+            String query = "SELECT * FROM registration WHERE studentid = ? AND termid = ?";
+            PreparedStatement ps = connection.prepareStatement(query);
+            ps.setInt(1, studentid);
+            ps.setInt(2, termid);
+            
+            ResultSet rs = ps.executeQuery();
+
+            /* Get number of rows returned */
+            while(rs.next()) {
+                rowCount++;
+            }
+
+            /* Create array to hold CRNs */
+            crns = new int[rowCount];
+            
+            /* Reset ResultSet */
+            rs = ps.executeQuery();
+            
+            /* Populate array with CRNs */
+            for(int i = 0; i < rowCount; i++) {
+                rs.next();
+                crns[i] = rs.getInt(3);
+            }
+
+            for(int i = 0; i < crns.length; i++) {
+                /* Search for schedule attributes using CRNs */
+                query = "SELECT scheduletypeid, instructor, num, `start`, days, section, `end`, `where`, crn, subjectid FROM section WHERE crn = ?";
+                ps = connection.prepareStatement(query);
+                ps.setInt(1, crns[i]);
+
+                rs = ps.executeQuery();
+
+                ResultSetMetaData metadata = rs.getMetaData();
+                int columnCount = metadata.getColumnCount();
+
+                /* Populating the JSON Array */
+                while (rs.next()) {
+                    JSONObject obj = new JSONObject();
+
+                    obj.put("studentid", Integer.toString(studentid)); // Gets studentid
+                    obj.put("termid", Integer.toString(termid)); // Gets termid
+
+                    for (int j = 1; j <= columnCount; j++) { // Gets all other attributes
+                        String key = metadata.getColumnName(j);
+                        String value = rs.getString(j);
+
+                        obj.put(key, value);
+                    }
+                    json.add(obj);
+                }
+            }
+
+            result = JSONValue.toJSONString(json); // Convert JSONArray to JSON String
+        } 
+        catch (Exception e) { e.printStackTrace(); }
         
         return result;
         
@@ -160,7 +265,18 @@ public class Database {
             ResultSetMetaData metadata = resultset.getMetaData();
             int columnCount = metadata.getColumnCount();
             
-            // INSERT YOUR CODE HERE
+             /* Populate the JSON Array */
+             while (resultset.next()) {
+                JSONObject obj = new JSONObject();
+                for (int i = 1; i <= columnCount; i++) {
+                    String key = metadata.getColumnName(i);
+                    String values = resultset.getString(i);
+
+                    keys.add(key);
+                    obj.put(key, values);
+                }
+                json.add(obj);
+            }
         
         }
         catch (Exception e) { e.printStackTrace(); }
